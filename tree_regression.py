@@ -32,19 +32,48 @@ print(df_seguros.head())
 
 print("\nApós a transformação")
 
-from sklearn.preprocessing import LabelEncoder, FunctionTransformer, OneHotEncoder
+# Importando as bibliotecas necessárias
+from sklearn.preprocessing import LabelEncoder, FunctionTransformer
+from sklearn.compose import make_column_transformer
 
-le = LabelEncoder()
-df_seguros['Gênero'] = le.fit_transform(df_seguros['Gênero'].fillna(df_seguros['Gênero'].mode()[0]))
-df_seguros['Fumante'] = le.fit_transform(df_seguros['Fumante'].fillna(df_seguros['Fumante'].mode()[0]))
-df_seguros['Região'] = le.fit_transform(df_seguros['Região'].fillna(df_seguros['Região'].mode()[0]))
+# Função para aplicar o LabelEncoder
+def apply_label_encoder(df):
+    le = LabelEncoder()
+    for col in df.columns:
+        df[col] = le.fit_transform(df[col])
+    return df
 
-print(df_seguros.head(10))
+# Criando um transformador de função para a função apply_label_encoder
+label_encoder_transformer = FunctionTransformer(apply_label_encoder)
+
+# Definindo os atributos categóricos
+cat_attribs = ['Gênero', 'Fumante', 'Região']  # Inclua aqui apenas as colunas categóricas
+
+# Criando a pipeline
+cat_pipeline = make_column_transformer(
+    (label_encoder_transformer, cat_attribs)
+)
+# Aplicando a pipeline ao DataFrame
+df_seguros_transformed = cat_pipeline.fit_transform(df_seguros)
+
+# Criando um novo DataFrame com o resultado
+df_seguros_transformed = pd.DataFrame(df_seguros_transformed, columns=cat_attribs)
+
+# Criando um DataFrame para as colunas não transformadas
+df_non_transformed = df_seguros.drop(columns=cat_attribs)
+
+# Concatenando o DataFrame transformado com o DataFrame não transformado
+df_final = pd.concat([df_seguros_transformed, df_non_transformed], axis=1)
+
+# Reordenando as colunas para a ordem original
+df_final = df_final[df_seguros.columns]
+
+print(df_final.head(10))
 
 # -------------- ANÁLISE DE CORRELAÇÃO --------------
 
 # Criando dataframe com nossas variáveis numericas
-df_seguros_numerico = df_seguros.select_dtypes([np.number])
+df_seguros_numerico = df_final.select_dtypes([np.number])
 # Calcula a matriz de correlação
 correlation_matrix = df_seguros_numerico.corr()
 print("\nMatriz de correlação")
@@ -199,26 +228,16 @@ from sklearn.compose import ColumnTransformer
 num_attribs = list(df_seguros.select_dtypes(include=[np.number]).columns)
 num_attribs.remove('Encargos')  # Removendo 'Encargos' da lista de atributos numéricos.
 
-# Obtendo os atributos categóricos do conjunto de dados.
-cat_attribs = list(df_seguros.select_dtypes(include=['object']).columns)
-
-# Criando uma pipeline para as variáveis categóricas.
-# Esta pipeline aplica o OneHotEncoder para transformar as variáveis categóricas em numéricas.
-cat_pipeline = Pipeline([
-    ("cat", OneHotEncoder(), cat_attribs),
-])
-
-# Criando uma pipeline para o PCA.
-pca_pipeline = Pipeline([
+# Criando uma pipeline para as variáveis numéricas.
+num_pipeline = Pipeline([
     ('imputer', SimpleImputer(strategy="median")), #substituindo valores nulos pela mediana
-    ('pca', PCA(n_components=num_de_pca)) #aplicando o PCA
+    ('std_scaler', StandardScaler()), # padronizando as escalas dos dados
 ])
 
 # Criando a pipeline completa com a pipeline para as variáveis categóricas e a pipeline para as variáveis numéricas.
 full_pipeline = ColumnTransformer([
     ("cat", cat_pipeline, cat_attribs),  # Tratando as variáveis categóricas.
     ("num", num_pipeline, num_attribs),  # Tratando as variáveis numéricas.
-    ("pca", pca_pipeline, num_attribs)  # Aplicando o PCA.
 ])
 
 # Aplicando a pipeline completa ao conjunto de dados para obter os dados preparados para o treinamento do modelo.
@@ -311,14 +330,15 @@ plt.show()
 n = 10  # Número de registros que você deseja gerar
 idade_values = np.linspace(18, 65, n)  # Gera n valores de idade entre 18 e 65
 imc_values = np.linspace(20, 30, n)  # Gera n valores de IMC entre 20 e 30
-fumante_values = ['sim', 'não']  # Possíveis valores para fumante
+fumante_values = ['sim', 'não'] * (n // 2)  # Possíveis valores para fumante
+genero_values = ['masculino', 'feminino'] * (n // 2)  # Possíveis valores para fumante
 
 registros = []
 
-for idade, imc, fumante in zip(idade_values, imc_values, fumante_values * (n // 2)):
+for idade, imc, fumante, genero in zip(idade_values, imc_values, fumante_values, genero_values):
     registro = {
         'Idade': int(idade),
-        'Gênero': 'masculino',
+        'Gênero': genero,
         'IMC': imc,
         'Filhos': 2,
         'Fumante': fumante,
@@ -328,10 +348,6 @@ for idade, imc, fumante in zip(idade_values, imc_values, fumante_values * (n // 
 
 # Convertendo a lista de registros em um DataFrame
 novo_registro = pd.DataFrame(registros)
-
-novo_registro['Gênero'] = le.fit_transform(novo_registro['Gênero'].fillna(novo_registro['Gênero'].mode()[0]))
-novo_registro['Fumante'] = le.fit_transform(novo_registro['Fumante'].fillna(novo_registro['Fumante'].mode()[0]))
-novo_registro['Região'] = le.fit_transform(novo_registro['Região'].fillna(novo_registro['Região'].mode()[0]))
 
 # Passando o novo registro através da pipeline de pré-processamento
 novo_registro_preparado = full_pipeline.transform(novo_registro)
