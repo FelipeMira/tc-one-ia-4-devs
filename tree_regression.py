@@ -97,7 +97,6 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # A primeira tupla representa a primeira etapa, onde a classe SimpleImputer é usada para substituir os valores ausentes pela mediana
 # A segunda tupla representa a segunda etapa, onde a classe StandardScaler é usada para padronizar os recursos
 num_pipeline = Pipeline([
-    ('imputer', SimpleImputer(strategy="median")), #substituindo valores nulos pela mediana
     ('min_max_scaler', MinMaxScaler()), # padronizando as escalas dos dados
     ('std_scaler', StandardScaler()), # padronizando as escalas dos dados
 ])
@@ -209,18 +208,17 @@ cat_pipeline = Pipeline([
     ("cat", OneHotEncoder(), cat_attribs),
 ])
 
-# Criando uma pipeline para as variáveis numéricas.
-# Esta pipeline preenche os valores nulos com a mediana, padroniza os dados e aplica o PCA.
-num_pipeline = Pipeline([
-    ('imputer', SimpleImputer(strategy="median")),  # Substituindo valores nulos pela mediana.
-    ('std_scaler', StandardScaler()),  # Padronizando as escalas dos dados.
-    ('pca', PCA(n_components=num_de_pca))  # Aplicando o PCA.
+# Criando uma pipeline para o PCA.
+pca_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy="median")), #substituindo valores nulos pela mediana
+    ('pca', PCA(n_components=num_de_pca)) #aplicando o PCA
 ])
 
 # Criando a pipeline completa com a pipeline para as variáveis categóricas e a pipeline para as variáveis numéricas.
 full_pipeline = ColumnTransformer([
-    ("num", num_pipeline, num_attribs),  # Tratando as variáveis numéricas.
     ("cat", cat_pipeline, cat_attribs),  # Tratando as variáveis categóricas.
+    ("num", num_pipeline, num_attribs),  # Tratando as variáveis numéricas.
+    ("pca", pca_pipeline, num_attribs)  # Aplicando o PCA.
 ])
 
 # Aplicando a pipeline completa ao conjunto de dados para obter os dados preparados para o treinamento do modelo.
@@ -296,16 +294,15 @@ import matplotlib.pyplot as plt
 # Obtenha as previsões para todo o conjunto de dados
 seguros_predictions = model_dtr.predict(seguros_preparado)
 
-# Crie um gráfico de dispersão dos valores reais vs. valores previstos
-plt.scatter(y, seguros_predictions, alpha=0.3)
-plt.xlabel('Valores Reais')
-plt.ylabel('Previsões')
+# Crie um histograma dos valores reais
+plt.hist(y, bins=30, alpha=0.5, label='Valores Reais')
 
-# Adicione a linha de identidade
-lims = [np.min([plt.xlim(), plt.ylim()]), np.max([plt.xlim(), plt.ylim()])]
-plt.plot(lims, lims, 'k-', alpha=0.75, zorder=0)
-plt.xlim(lims)
-plt.ylim(lims)
+# Crie um histograma dos valores previstos
+plt.hist(seguros_predictions, bins=30, alpha=0.5, label='Previsões')
+
+plt.xlabel('Valores')
+plt.ylabel('Frequência')
+plt.legend(loc='upper right')
 
 plt.show()
 
