@@ -36,44 +36,47 @@ print("\nApós a transformação")
 from sklearn.preprocessing import LabelEncoder, FunctionTransformer
 from sklearn.compose import make_column_transformer
 
+
 # Função para aplicar o LabelEncoder
-def apply_label_encoder(df):
-    le = LabelEncoder()
-    for col in df.columns:
-        df[col] = le.fit_transform(df[col])
-    return df
+def create_cat_pipeline(df, columns):
+    # Função para aplicar o LabelEncoder
+    def apply_label_encoder(df):
+        le = LabelEncoder()
+        for col in df.columns:
+            if df[col].dtype == 'object':  # Se a coluna for categórica
+                df[col] = le.fit_transform(df[col])
+            else:  # Se a coluna já for numérica
+                df[col] = df[col]
+        return df
 
-# Criando um transformador de função para a função apply_label_encoder
-label_encoder_transformer = FunctionTransformer(apply_label_encoder)
+    # Criando um transformador de função para a função apply_label_encoder
+    label_encoder_transformer = FunctionTransformer(apply_label_encoder)
 
-# Definindo os atributos categóricos
-cat_attribs = ['Gênero', 'Fumante', 'Região']  # Inclua aqui apenas as colunas categóricas
+    # Criando a pipeline
+    cat_pipeline = make_column_transformer(
+        (label_encoder_transformer, columns)
+    )
+
+    return cat_pipeline
+
+
+# Definindo as colunas que você deseja processar
+columns_to_process = df_seguros.columns
 
 # Criando a pipeline
-cat_pipeline = make_column_transformer(
-    (label_encoder_transformer, cat_attribs)
-)
+cat_pipeline = create_cat_pipeline(df_seguros, columns_to_process)
+
 # Aplicando a pipeline ao DataFrame
 df_seguros_transformed = cat_pipeline.fit_transform(df_seguros)
 
-# Criando um novo DataFrame com o resultado
-df_seguros_transformed = pd.DataFrame(df_seguros_transformed, columns=cat_attribs)
+df_seguros_transformed = pd.DataFrame(df_seguros_transformed, columns=df_seguros.columns)
 
-# Criando um DataFrame para as colunas não transformadas
-df_non_transformed = df_seguros.drop(columns=cat_attribs)
-
-# Concatenando o DataFrame transformado com o DataFrame não transformado
-df_final = pd.concat([df_seguros_transformed, df_non_transformed], axis=1)
-
-# Reordenando as colunas para a ordem original
-df_final = df_final[df_seguros.columns]
-
-print(df_final.head(10))
+print(df_seguros_transformed.head(10))
 
 # -------------- ANÁLISE DE CORRELAÇÃO --------------
 
 # Criando dataframe com nossas variáveis numericas
-df_seguros_numerico = df_final.select_dtypes([np.number])
+df_seguros_numerico = df_seguros_transformed.select_dtypes([np.number])
 # Calcula a matriz de correlação
 correlation_matrix = df_seguros_numerico.corr()
 print("\nMatriz de correlação")
@@ -81,6 +84,7 @@ print(correlation_matrix)
 
 # Adicionando um grafico com o mapa de calor da matriz de correlação
 import seaborn as sns
+
 # Visualização da matriz de correlação
 plt.figure(figsize=(10, 8))
 sns.heatmap(correlation_matrix, cmap='coolwarm', annot=False, fmt=".2f", linewidths=.5)
@@ -90,6 +94,7 @@ plt.show()
 # -------------- TRATANDO DADOS NULOS --------------
 
 from sklearn.impute import SimpleImputer
+
 # Preenche os valores NaN com a média das colunas
 # strategy='mean' preenche os valores faltantes com a média
 imputer = SimpleImputer(strategy='mean')
@@ -102,8 +107,8 @@ print(seguros_num.head(10))
 # -------------- SEPARANDO OS DADOS --------------
 from sklearn.model_selection import train_test_split
 
-X = seguros_num.drop(columns=['Encargos']) # Variáveis características
-y = seguros_num['Encargos'] # O que eu quero prever. (Target)
+X = seguros_num.drop(columns=['Encargos'])  # Variáveis características
+y = seguros_num['Encargos']  # O que eu quero prever. (Target)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -126,8 +131,8 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # A primeira tupla representa a primeira etapa, onde a classe SimpleImputer é usada para substituir os valores ausentes pela mediana
 # A segunda tupla representa a segunda etapa, onde a classe StandardScaler é usada para padronizar os recursos
 num_pipeline = Pipeline([
-    ('min_max_scaler', MinMaxScaler()), # padronizando as escalas dos dados
-    ('std_scaler', StandardScaler()), # padronizando as escalas dos dados
+    ('min_max_scaler', MinMaxScaler()),  # padronizando as escalas dos dados
+    ('std_scaler', StandardScaler()),  # padronizando as escalas dos dados
 ])
 
 # A função fit_transform() do objeto 'num_pipeline' é usada para ajustar o pipeline aos dados e, em seguida, transformar os dados.
@@ -157,12 +162,14 @@ plt.ylabel('Variância Acumulada Explicada')
 plt.title('Variância Acumulada Explicada pelo PCA')
 plt.show()
 
+
 def calcular_num_componentes(variancia_desejada, dados):
     pca = PCA()
     pca.fit(dados)
     variancia_cumulativa = np.cumsum(pca.explained_variance_ratio_)
     num_de_pca = np.argmax(variancia_cumulativa >= variancia_desejada) + 1
     return num_de_pca
+
 
 # Vamos definir um limiar de 80%, ou seja, queremos obter uma porcentagem de explicancia sobre
 # nossos dados de igual a 80%
@@ -209,6 +216,7 @@ plt.show()
 # -------------- VERIFICANDO A NORMALIDADE --------------
 
 from scipy.stats import shapiro
+
 # Vamos olhar para cada coluna a normalidade após a redução de dimensionalidade
 for column in pca_df.columns:
     stat, p_value = shapiro(pca_df[column])
@@ -222,22 +230,38 @@ for column in pca_df.columns:
 
 # -------------- APLICANDO UMA PIPELINE --------------
 
-from sklearn.compose import ColumnTransformer
-
 # Obtendo os atributos numéricos do conjunto de dados, excluindo 'Encargos'.
 num_attribs = list(df_seguros.select_dtypes(include=[np.number]).columns)
 num_attribs.remove('Encargos')  # Removendo 'Encargos' da lista de atributos numéricos.
 
 # Criando uma pipeline para as variáveis numéricas.
 num_pipeline = Pipeline([
-    ('imputer', SimpleImputer(strategy="median")), #substituindo valores nulos pela mediana
-    ('std_scaler', StandardScaler()), # padronizando as escalas dos dados
+    ('imputer', SimpleImputer(strategy="median")),  #substituindo valores nulos pela mediana
+    ('std_scaler', StandardScaler()),  # padronizando as escalas dos dados
 ])
 
-# Criando a pipeline completa com a pipeline para as variáveis categóricas e a pipeline para as variáveis numéricas.
-full_pipeline = ColumnTransformer([
-    ("cat", cat_pipeline, cat_attribs),  # Tratando as variáveis categóricas.
-    ("num", num_pipeline, num_attribs),  # Tratando as variáveis numéricas.
+
+def apply_pipelines(df):
+    # Removendo a coluna 'Encargos' se ela existir
+    if 'Encargos' in df.columns:
+        df = df.drop(columns=['Encargos'])
+
+    # Criando a cat_pipeline com as colunas atuais do DataFrame
+    cat_pipeline = create_cat_pipeline(df, df.columns)
+
+    # Aplicando a cat_pipeline
+    df_cat_transformed = cat_pipeline.fit_transform(df)
+    df_cat_transformed = pd.DataFrame(df_cat_transformed, columns=df.columns)
+
+    # Aplicando a num_pipeline
+    df_num_transformed = num_pipeline.fit_transform(df_cat_transformed)
+
+    return df_num_transformed
+
+
+# Criando a pipeline completa
+full_pipeline = Pipeline([
+    ('apply_pipelines', FunctionTransformer(apply_pipelines)),
 ])
 
 # Aplicando a pipeline completa ao conjunto de dados para obter os dados preparados para o treinamento do modelo.
@@ -287,7 +311,7 @@ lin_mse = mean_squared_error(some_labels, predictions)
 # A função np.sqrt() da biblioteca NumPy é usada para calcular a raiz quadrada do erro quadrático médio.
 # Isso resulta no erro quadrático médio da raiz (RMSE), que é uma medida comumente usada de quão bem um modelo de regressão se ajusta aos dados.
 # O RMSE é armazenado na variável 'lin_rmse'.
-lin_rmse = np.sqrt(lin_mse) # raiz quadrada aqui
+lin_rmse = np.sqrt(lin_mse)  # raiz quadrada aqui
 
 # Imprime o valor do RMSE
 print("\nErro Quadrático Médio da Raiz (RMSE):")
@@ -304,7 +328,7 @@ from sklearn.metrics import r2_score
 
 r2 = r2_score(some_labels, predictions)
 print("\nCoeficiente de Determinação (R²):")
-print('r²',r2)
+print('r²', r2)
 
 # -------------- VALIDAÇÃO CRUZADA --------------
 
