@@ -53,11 +53,11 @@ def create_cat_pipeline(df, columns):
     label_encoder_transformer = FunctionTransformer(apply_label_encoder)
 
     # Criando a pipeline
-    cat_pipeline = make_column_transformer(
+    pipeline = make_column_transformer(
         (label_encoder_transformer, columns)
     )
 
-    return cat_pipeline
+    return pipeline
 
 
 # Definindo as colunas que você deseja processar
@@ -246,11 +246,8 @@ def apply_pipelines(df):
     if 'Encargos' in df.columns:
         df = df.drop(columns=['Encargos'])
 
-    # Criando a cat_pipeline com as colunas atuais do DataFrame
-    cat_pipeline = create_cat_pipeline(df, df.columns)
-
-    # Aplicando a cat_pipeline
-    df_cat_transformed = cat_pipeline.fit_transform(df)
+    # Aplicando a cat_pipeline com as colunas atuais do DataFrame
+    df_cat_transformed = create_cat_pipeline(df, df.columns).fit_transform(df)
     df_cat_transformed = pd.DataFrame(df_cat_transformed, columns=df.columns)
 
     # Aplicando a num_pipeline
