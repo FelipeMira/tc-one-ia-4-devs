@@ -27,3 +27,27 @@ Este script Python realiza várias etapas de pré-processamento e modelagem de d
 12. **Teste do modelo com novos dados**: O modelo é testado com novos dados.
 
 Cada etapa é realizada em uma seção separada do código, e cada seção é comentada para explicar o que está acontecendo. Além disso, o código usa várias bibliotecas Python para ciência de dados e aprendizado de máquina, incluindo pandas, numpy, matplotlib, seaborn, sklearn e scipy.
+
+# Getting started
+
+Criar um env para python 
+
+```
+python -m venv ~/path-para-seu-repo/venv
+```
+
+Ative o env. Este
+
+```
+// unix
+source ./venv/bin/activate
+
+// powershell/win (pode-se usar .bat também)
+./venv/bin/Activate.ps1
+```
+
+Instalar requirements 
+
+```
+pip install -r requirements.txt
+```
