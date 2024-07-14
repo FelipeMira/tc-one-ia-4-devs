@@ -29,10 +29,6 @@ def calcular_encargos(idade, imc, fumante):
     if fumante == 'sim':
         encargo += 10000
 
-    # Verificando se o encargo excede o máximo permitido
-    if encargo > 40000:
-        encargo = 40000
-
     return Decimal(str(encargo)).quantize(Decimal('0.00'))
 
 # Gerando os dados fictícios
@@ -90,7 +86,7 @@ df_novos_dados = pd.DataFrame(novos_dados, columns=df.columns)
 df = pd.concat([df_novos_dados, df]).reset_index(drop=True)
 
 # Defina a proporção de valores vazios que você deseja introduzir
-proporcao_vazios = 0.05  # 5% dos valores serão vazios
+proporcao_vazios = 0.02  # 5% dos valores serão vazios
 
 # Para cada coluna no DataFrame, selecione uma amostra aleatória de índices e defina o valor para vazio
 for coluna in df.columns:
